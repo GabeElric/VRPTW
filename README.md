@@ -1,10 +1,12 @@
 VEHICLE ROUTING PROBLEM WITH TIME WINDOWS
 Facultad de Ingeniería Mecánica y Eléctrica
 Temas Selectos de Optimización
-1902263 Gabriel Castillo Muruaga ITS
 =========================================================
 
+1902263 Gabriel Castillo Muruaga ITS
+
 This project solves the Vehicle Routing Problem with Time Windows (VRPTW) using two main approaches: an insertion heuristic to build initial solutions, and a Local Search method based on Large Neighborhood Search (LNS) to improve them.
+
 
 Files:
 
