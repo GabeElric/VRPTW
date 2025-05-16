@@ -1,14 +1,17 @@
 import math
-import time  
+import time
+import random
+import copy
 
-# Load data from the file
 def load_instance(filename):
-    with open(filename, 'r') as f:
-        lines = f.readlines()
+    try:
+        with open(filename, 'r') as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Error: File '{filename}' not found.")
 
-    # Find start of customer section
     start = next(i for i, line in enumerate(lines) if line.strip().startswith("CUSTOMER"))
-    customer_lines = lines[start + 2:]  # Skip header
+    customer_lines = lines[start + 2:]
 
     customers = []
     for line in customer_lines:
@@ -28,107 +31,138 @@ def load_instance(filename):
 
     return customers
 
-# Euclidean distance
 def distance(c1, c2):
     return math.hypot(c1['x'] - c2['x'], c1['y'] - c2['y'])
 
-# Insert customer into route if feasible
-def is_feasible(route, customer, capacity, current_time):
-    if not route:
-        return False  # Route cannot be empty
-
-    last = route[-1]
-    travel_time = distance(last, customer)
-    arrival = current_time + travel_time
-    start_service = max(arrival, customer['ready_time'])
-
-    if start_service > customer['due_date']:
+def check_feasibility(route, customer, pos, vehicle_capacity):
+    total_demand = sum(c['demand'] for c in route) + customer['demand']
+    if total_demand > vehicle_capacity:
         return False
-    if sum(c['demand'] for c in route) + customer['demand'] > capacity:
-        return False
+
+    new_route = route[:pos] + [customer] + route[pos:]
+
+    time_at_node = 0
+    for i in range(1, len(new_route)):
+        travel = distance(new_route[i-1], new_route[i])
+        arrival = time_at_node + travel
+        start_service = max(arrival, new_route[i]['ready_time'])
+        if start_service > new_route[i]['due_date']:
+            return False
+        time_at_node = start_service + new_route[i]['service_time']
+
     return True
 
-def InsertionI1(customers, vehicle_capacity):
+def insertion_cost(route, customer, pos):
+    prev = route[pos - 1]
+    nex = route[pos]
+    cost_removed = distance(prev, nex)
+    cost_added = distance(prev, customer) + distance(customer, nex)
+    return cost_added - cost_removed
+
+def insertion_heuristic(customers, vehicle_capacity, max_vehicles):
     depot = customers[0]
-    unrouted = customers[1:]  # Exclude depot
+    unrouted = customers[1:]
     routes = []
-    total_distance = 0  # Initialize total distance
 
-    while unrouted:
-        route = [depot]
-        current_time = 0
-        capacity = 0
+    while unrouted and len(routes) < max_vehicles:
+        route = [depot, depot]
         while True:
-            feasible_customers = []
+            best_insertion = None
             for cust in unrouted:
-                if is_feasible(route, cust, vehicle_capacity, current_time):
-                    last = route[-1]
-                    travel = distance(last, cust)
-                    begin_service = max(current_time + travel, cust['ready_time'])
-                    cost = travel
-                    feasible_customers.append((cost, cust, begin_service))
+                for pos in range(1, len(route)):
+                    if check_feasibility(route, cust, pos, vehicle_capacity):
+                        cost = insertion_cost(route, cust, pos)
+                        if (best_insertion is None) or (cost < best_insertion[0]):
+                            best_insertion = (cost, cust, pos)
 
-            if not feasible_customers:
+            if best_insertion is None:
                 break
 
-            # Select best (lowest cost)
-            feasible_customers.sort(key=lambda x: x[0])
-            _, next_cust, start_service = feasible_customers[0]
-            route.append(next_cust)
-            current_time = start_service + next_cust['service_time']
-            capacity += next_cust['demand']
-            unrouted.remove(next_cust)
+            _, cust_to_insert, position = best_insertion
+            route = route[:position] + [cust_to_insert] + route[position:]
+            unrouted.remove(cust_to_insert)
 
-        # Add distance for returning to depot
-        route_distance = sum(distance(route[i], route[i + 1]) for i in range(len(route) - 1))
-        total_distance += route_distance
-
-        route.append(depot)  # Return to depot
         routes.append(route)
+
+    if unrouted:
+        print("Warning: Not all customers could be routed due to vehicle constraints.")
+
+    routes = [r for r in routes if len(r) > 2]
+
+    total_distance = sum(
+        sum(distance(route[i], route[i + 1]) for i in range(len(route) - 1))
+        for route in routes
+    )
 
     return routes, total_distance
 
-# Display routes
 def print_routes(routes):
     for i, route in enumerate(routes):
         ids = [str(c['id']) for c in route]
         print(f"Route {i + 1}: {' -> '.join(ids)}")
 
-# Run
-try:
-    start_time = time.time()  # Start timer
-    filename = 'C101.txt'  # Replace with your filename
-    customers = load_instance(filename)
-    NUM_VEHICLES = 25  # Number of vehicles
+def save_routes_to_file(routes, filename, instance_name=None, total_distance=None, computation_time=None):
+    with open(filename, 'w') as f:
+        if instance_name:
+            f.write(f"Instance: {instance_name}\n")
+        for i, route in enumerate(routes):
+            ids = [str(c['id']) for c in route]
+            f.write(f"Route {i + 1}: {' -> '.join(ids)}\n")
+        if total_distance is not None:
+            f.write(f"Total Distance: {total_distance:.2f}\n")
+        if computation_time is not None:
+            f.write(f"Computation Time: {computation_time:.2f} seconds\n")
 
-    # Determine the best-known solution, number of vehicles, and vehicle capacity based on the file
-    if 'C1' in filename.upper():
-        BEST_KNOWN_SOLUTION = 828.94
+# Programa principal
+try:
+    start_time = time.time()
+    filename = 'C104.txt'
+    customers = load_instance(filename)
+
+    NUM_VEHICLES = 25
+    fname = filename.upper()
+    if 'C104' in fname:
+        BEST_KNOWN_SOLUTION = 824.78
         VEHICLE_CAPACITY = 200
-    elif 'C2' in filename.upper():
+    elif 'C203' in fname:
+        BEST_KNOWN_SOLUTION = 588.88
+        VEHICLE_CAPACITY = 700
+    elif 'C204' in fname:
         BEST_KNOWN_SOLUTION = 591.56
         VEHICLE_CAPACITY = 700
+    elif 'C205' in fname:
+        BEST_KNOWN_SOLUTION = 586.39
+        VEHICLE_CAPACITY = 700
+    elif 'C206' in fname:
+        BEST_KNOWN_SOLUTION = 586.39
+        VEHICLE_CAPACITY = 700
+    elif 'C1' in fname:
+        BEST_KNOWN_SOLUTION = 828.94
+        VEHICLE_CAPACITY = 200
+    elif 'C2' in fname:
+        BEST_KNOWN_SOLUTION = 591.56
+        VEHICLE_CAPACITY = 700
+    else:
+        raise ValueError("Error: Unknown instance type in filename.")
 
+    # Use only the insertion heuristic 
+    routes, total_distance = insertion_heuristic(customers, VEHICLE_CAPACITY, NUM_VEHICLES)
 
-    # Calculate vehicle capacity based on the total demand and number of vehicles
-    total_demand = sum(c['demand'] for c in customers[1:])  # Exclude depot
-    vehicle_capacity = VEHICLE_CAPACITY
-
-    routes, total_distance = InsertionI1(customers, vehicle_capacity)
-    end_time = time.time()  # End timer
-
-    # Calculate Gap (%)
     gap = ((total_distance - BEST_KNOWN_SOLUTION) / BEST_KNOWN_SOLUTION) * 100
 
-    # Print results
     print_routes(routes)
+    end_time = time.time()
+    computation_time = end_time - start_time
+    output_filename = f"output_routes_{filename.split('.')[0]}.txt"
+    save_routes_to_file(routes, output_filename, instance_name=filename, total_distance=total_distance, computation_time=computation_time)
     print(f"Instance computed: {filename}")
-    print(f"Number of Vehicles: {NUM_VEHICLES}")
+    print(f"Number of Vehicles Used: {len(routes)}")
     print(f"Vehicle Capacity: {VEHICLE_CAPACITY}")
     print(f"Objective Value (Total Distance): {total_distance:.2f}")
     print(f"Gap (%): {gap:.2f}%")
-    print(f"Computation Time: {end_time - start_time:.2f} seconds")
-except FileNotFoundError:
-    print("Error: File not found. Please check the filename and path.")
+    print(f"Computation Time: {computation_time:.2f} seconds")
+
+except FileNotFoundError as e:
+    print(e)
 except Exception as e:
     print(f"An error occurred: {e}")

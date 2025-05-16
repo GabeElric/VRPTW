@@ -1,0 +1,15 @@
+Archivo	Instancia	TotalDistance	BestKnown	Gap (%)
+output_routes_lns_C101.txt	C101.txt	828.94	828.94	0.0
+output_routes_lns_C102.txt	C102.txt	828.94	828.94	0.0
+output_routes_lns_C103.txt	C103.txt	896.39	828.94	8.136897724805165
+output_routes_lns_C104.txt	C104.txt	902.06	824.78	9.369771332961514
+output_routes_lns_C106.txt	C106.txt	828.94	828.94	0.0
+output_routes_lns_C107.txt	C107.txt	828.94	828.94	0.0
+output_routes_lns_C108.txt	C108.txt	895.56	828.94	8.036769850652627
+output_routes_lns_C109.txt	C109.txt	939.77	828.94	13.370087099186904
+output_routes_lns_C201.txt	C201.txt	715.79	591.56	21.000405706944356
+output_routes_lns_C202.txt	C202.txt	1022.83	591.56	72.90384745418895
+output_routes_lns_C203.txt	C203.txt	938.55	588.88	59.37882081238961
+output_routes_lns_C204.txt	C204.txt	750.47	591.56	26.86287105280954
+output_routes_lns_C205.txt	C205.txt	744.52	586.39	26.96669452071147
+output_routes_lns_C206.txt	C206.txt	652.85	586.39	11.333753986254887
